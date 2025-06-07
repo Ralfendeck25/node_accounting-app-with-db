@@ -1,6 +1,6 @@
 'use strict';
 
-const { Sequelize } = require('sequelize');
+const { Sequelize, Op } = require('sequelize');
 const utils = require('util');
 
 // Needed for testing purposes, do not remove
@@ -15,11 +15,6 @@ const {
   POSTGRES_DB,
 } = process.env;
 
-/*
-  All credentials setted to default values (exsept password - it is exapmle)
-  replace if needed with your own
-*/
-
 const sequelize = new Sequelize({
   database: POSTGRES_DB || 'postgres',
   username: POSTGRES_USER || 'postgres',
@@ -31,4 +26,5 @@ const sequelize = new Sequelize({
 
 module.exports = {
   sequelize,
+  Op, // Export Op for query operators
 };
