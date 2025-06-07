@@ -3,86 +3,110 @@
 const express = require('express');
 const { sequelize } = require('./db');
 const { models } = require('./models');
-const { Category } = models;
+const { Expense, User } = models;
 
 const createServer = () => {
   const app = express();
   app.use(express.json());
 
-  // CRUD for Categories
-  // Create
-  app.post('/categories', async (req, res) => {
+  // Create expense
+  app.post('/expenses', async (req, res) => {
     try {
-      const { name } = req.body;
-      const category = await Category.create({ name });
-      res.status(201).json(category);
+      const { spentAt, title, amount, category, note, userId } = req.body;
+      
+      if (!spentAt || !title || !amount || !category || !userId) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const expense = await Expense.create({
+        spentAt,
+        title,
+        amount,
+        category,
+        note,
+        userId,
+      });
+
+      res.status(201).json(expense);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  // Read all
-  app.get('/categories', async (req, res) => {
+  // Get all expenses with filters
+  app.get('/expenses', async (req, res) => {
     try {
-      const categories = await Category.findAll();
-      res.json(categories);
+      const { userId, categories, from, to } = req.query;
+      const where = {};
+
+      if (userId) where.userId = userId;
+      if (categories) where.category = categories;
+      if (from && to) {
+        where.spentAt = {
+          [Op.between]: [new Date(from), new Date(to)],
+        };
+      } else if (from) {
+        where.spentAt = {
+          [Op.gte]: new Date(from),
+        };
+      } else if (to) {
+        where.spentAt = {
+          [Op.lte]: new Date(to),
+        };
+      }
+
+      const expenses = await Expense.findAll({ where });
+      res.json(expenses);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Read one
-  app.get('/categories/:id', async (req, res) => {
+  // Get single expense
+  app.get('/expenses/:id', async (req, res) => {
     try {
-      const category = await Category.findByPk(req.params.id);
-      if (!category) {
-        return res.status(404).json({ error: 'Category not found' });
+      const expense = await Expense.findByPk(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ error: 'Expense not found' });
       }
-      res.json(category);
+      res.json(expense);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Update
-  app.put('/categories/:id', async (req, res) => {
+  // Update expense
+  app.patch('/expenses/:id', async (req, res) => {
     try {
-      const [updated] = await Category.update(req.body, {
-        where: { id: req.params.id },
-      });
-      if (updated) {
-        const updatedCategory = await Category.findByPk(req.params.id);
-        return res.json(updatedCategory);
+      const expense = await Expense.findByPk(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ error: 'Expense not found' });
       }
-      res.status(404).json({ error: 'Category not found' });
+
+      await expense.update(req.body);
+      res.json(expense);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  // Delete
-  app.delete('/categories/:id', async (req, res) => {
+  // Delete expense
+  app.delete('/expenses/:id', async (req, res) => {
     try {
-      const deleted = await Category.destroy({
-        where: { id: req.params.id },
-      });
-      if (deleted) {
-        return res.status(204).send();
+      const expense = await Expense.findByPk(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ error: 'Expense not found' });
       }
-      res.status(404).json({ error: 'Category not found' });
+
+      await expense.destroy();
+      res.status(204).end();
     } catch (error) {
       res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Sync database
-  app.use(async (req, res, next) => {
-    try {
-      await sequelize.sync();
-      next();
-    } catch (error) {
-      console.error('Database sync error:', error);
-      res.status(500).json({ error: 'Database error' });
     }
   });
 
