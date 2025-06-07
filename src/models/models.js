@@ -1,11 +1,28 @@
 'use strict';
 
-const { User } = require('./User.model');
-const { Expense } = require('./Expense.model');
+const { sequelize } = require('../db.js');
+const { DataTypes } = require('sequelize');
+
+const Category = sequelize.define(
+  'Category',
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+  },
+  {
+    tableName: 'categories',
+    timestamps: false,
+  }
+);
 
 module.exports = {
-  models: {
-    User,
-    Expense,
-  },
+  Category,
 };
